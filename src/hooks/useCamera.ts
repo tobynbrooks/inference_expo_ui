@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera } from 'expo-camera';
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 
 interface CameraState {
@@ -7,27 +7,35 @@ interface CameraState {
   isRecording: boolean;
   recording: any | null;
   recordingDuration: number;
+  isCameraReady: boolean;
 }
 
 export const useCamera = () => {
-  const cameraRef = useRef<Camera>(null);
+  const cameraRef = useRef<CameraView>(null);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [microphonePermission, requestMicrophonePermission] = useMicrophonePermissions();
+  const [mediaLibraryPermission, setMediaLibraryPermission] = useState<any>(null);
+  
   const [state, setState] = useState<CameraState>({
     hasAllPermissions: false,
     isRecording: false,
     recording: null,
     recordingDuration: 0,
+    isCameraReady: false,
   });
 
   const requestPermissions = useCallback(async () => {
     try {
-      const cameraPermission = await Camera.requestCameraPermissionsAsync();
-      const microphonePermission = await Camera.requestMicrophonePermissionsAsync();
-      const mediaLibraryPermission = await MediaLibrary.requestPermissionsAsync();
+      const cameraResult = await requestCameraPermission();
+      const microphoneResult = await requestMicrophonePermission();
+      const mediaLibraryResult = await MediaLibrary.requestPermissionsAsync();
+      
+      setMediaLibraryPermission(mediaLibraryResult);
 
       const allGranted = 
-        cameraPermission.status === 'granted' &&
-        microphonePermission.status === 'granted' &&
-        mediaLibraryPermission.status === 'granted';
+        cameraResult?.granted &&
+        microphoneResult?.granted &&
+        mediaLibraryResult?.granted;
 
       setState(prev => ({ ...prev, hasAllPermissions: allGranted }));
       return allGranted;
@@ -36,10 +44,10 @@ export const useCamera = () => {
       setState(prev => ({ ...prev, hasAllPermissions: false }));
       return false;
     }
-  }, []);
+  }, [requestCameraPermission, requestMicrophonePermission]);
 
   const startRecording = useCallback(async () => {
-    if (!cameraRef.current || state.isRecording) return;
+    if (!cameraRef.current || state.isRecording || !state.isCameraReady) return;
 
     try {
       setState(prev => ({ 
@@ -48,18 +56,29 @@ export const useCamera = () => {
         recordingDuration: 0 
       }));
 
-      const recording = await cameraRef.current.recordAsync({
-        quality: Camera.Constants.VideoQuality['720p'],
-        maxDuration: 5,
-      });
+      let stopped = false;
 
+      // Auto-stop after 5s
+      const stopTimer = setTimeout(() => {
+        if (cameraRef.current && !stopped) {
+          cameraRef.current.stopRecording();
+        }
+      }, 5000);
+
+      const video = await cameraRef.current.recordAsync({
+        maxDuration: 5,
+        quality: '720p',
+      });
+      
+      stopped = true;
+      clearTimeout(stopTimer);
+      
       setState(prev => ({ 
         ...prev, 
-        recording, 
+        recording: video, 
         isRecording: false 
       }));
-
-      console.log('Recording saved to:', recording.uri);
+      console.log('Recording saved to:', video?.uri);
     } catch (error) {
       console.error('Failed to start recording:', error);
       setState(prev => ({ 
@@ -68,7 +87,7 @@ export const useCamera = () => {
         recordingDuration: 0 
       }));
     }
-  }, [state.isRecording]);
+  }, [state.isRecording, state.isCameraReady]);
 
   const stopRecording = useCallback(() => {
     if (cameraRef.current && state.isRecording) {
@@ -107,15 +126,26 @@ export const useCamera = () => {
     requestPermissions();
   }, [requestPermissions]);
 
+  useEffect(() => {
+    const hasPermissions = 
+      cameraPermission?.granted && 
+      microphonePermission?.granted && 
+      mediaLibraryPermission?.granted;
+    
+    setState(prev => ({ ...prev, hasAllPermissions: hasPermissions }));
+  }, [cameraPermission, microphonePermission, mediaLibraryPermission]);
+
   return {
     cameraRef,
     hasAllPermissions: state.hasAllPermissions,
     isRecording: state.isRecording,
     recording: state.recording,
     recordingDuration: state.recordingDuration,
+    isCameraReady: state.isCameraReady,
     startRecording,
     stopRecording,
     resetRecording,
     requestPermissions,
+    setCameraReady: () => setState(prev => ({ ...prev, isCameraReady: true })),
   };
 };

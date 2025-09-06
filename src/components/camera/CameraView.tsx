@@ -1,18 +1,20 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Camera } from 'expo-camera';
+import { CameraView as ExpoCameraView, CameraType } from 'expo-camera';
 import { colors } from '../../styles/colors';
 import { typography } from '../../styles/typography';
 import { spacing } from '../../styles/spacing';
 
 interface CameraViewProps {
-  cameraRef: React.RefObject<Camera>;
+  cameraRef: React.RefObject<any>;
   hasPermissions: boolean;
   isRecording: boolean;
   recordingDuration: number;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onRequestPermissions: () => void;
+  onCameraReady: () => void;
+  isCameraReady: boolean;
 }
 
 const CameraView: React.FC<CameraViewProps> = ({
@@ -23,6 +25,8 @@ const CameraView: React.FC<CameraViewProps> = ({
   onStartRecording,
   onStopRecording,
   onRequestPermissions,
+  onCameraReady,
+  isCameraReady,
 }) => {
   const formatDuration = (duration: number) => {
     const seconds = Math.floor(duration / 1000);
@@ -46,11 +50,12 @@ const CameraView: React.FC<CameraViewProps> = ({
 
   return (
     <View style={styles.container}>
-      <Camera
+      <ExpoCameraView
         ref={cameraRef}
         style={styles.camera}
-        type={Camera.Constants.Type.back}
-        ratio="16:9"
+        facing="back"
+        onCameraReady={onCameraReady}
+        mode="video"
       >
         <View style={styles.overlay}>
           {isRecording && (
@@ -75,7 +80,7 @@ const CameraView: React.FC<CameraViewProps> = ({
                 isRecording && styles.recordButtonActive,
               ]}
               onPress={isRecording ? onStopRecording : onStartRecording}
-              disabled={isRecording}
+              disabled={isRecording || !isCameraReady}
             >
               <View style={[
                 styles.recordButtonInner,
@@ -84,7 +89,7 @@ const CameraView: React.FC<CameraViewProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-      </Camera>
+      </ExpoCameraView>
     </View>
   );
 };

@@ -11,7 +11,7 @@ import { colors } from '../styles/colors';
 type RootStackParamList = {
   Home: undefined;
   Camera: undefined;
-  Processing: undefined;
+  Processing: { videoUri: string };
   Results: undefined;
 };
 
@@ -35,6 +35,8 @@ const CameraScreen: React.FC<Props> = ({ navigation }) => {
     resetRecording,
     requestPermissions,
     hasAllPermissions,
+    isCameraReady,
+    setCameraReady,
   } = useCamera();
 
   const handleRequestPermissions = async () => {
@@ -69,6 +71,8 @@ const CameraScreen: React.FC<Props> = ({ navigation }) => {
             onStartRecording={startRecording}
             onStopRecording={stopRecording}
             onRequestPermissions={handleRequestPermissions}
+            onCameraReady={setCameraReady}
+            isCameraReady={isCameraReady}
           />
         )}
       </WizardContainer>
