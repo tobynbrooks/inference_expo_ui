@@ -11,8 +11,8 @@ import ResultsScreen from './src/screens/ResultsScreen';
 export type RootStackParamList = {
   Home: undefined;
   Camera: undefined;
-  Processing: undefined;
-  Results: undefined;
+  Processing: { videoUri: string };
+  Results: { analysisData: any };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

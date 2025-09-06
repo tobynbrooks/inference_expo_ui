@@ -46,7 +46,9 @@ const CameraScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleContinue = () => {
-    navigation.navigate('Processing');
+    if (recording?.uri) {
+      navigation.navigate('Processing', { videoUri: recording.uri });
+    }
   };
 
   return (
